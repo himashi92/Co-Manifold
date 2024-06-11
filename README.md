@@ -1,5 +1,5 @@
 # Co-Manifold
-This repo contains the supported pytorch code and configuration files to reproduce results of Co-training Across Manifolds for Semi-supervised Medical Image Segmentation Article.
+This repo contains the supported pytorch code and configuration files to reproduce the results of the Co-Manifold Learning for Semi-supervised Medical Image Segmentation Article.
 
 ## Abstract
 
