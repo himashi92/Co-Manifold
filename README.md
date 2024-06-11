@@ -48,7 +48,7 @@ The experiments are conducted on two publicly available datasets,
 Pre-processed data can be found in folder data.
 
 ## Trained Model Weights
-Download trained model weights from this shared drive [link](https://drive.google.com/drive/folders/1n8XREomBOg9hiU59Bn5BW54sojNxApcw?usp=share_link), and put it under folder **code_la/model_weights** or **code_brats/model_weights**
+Download trained model weights from this shared drive [link](https://drive.google.com/drive/folders/1BMNvhAlMggKVbf44xSzNv8JZ2GKNPwK3?usp=sharing), and put it under folder **code_la/model_weights** or **code_brats/model_weights**
 
 ## Train Model
 - To train the model for LA MRI dataset on 10% Lableled data
