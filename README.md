@@ -3,7 +3,7 @@ This repo contains the supported pytorch code and configuration files to reprodu
 
 ## Abstract
 
-We investigate jointly learning hyperbolic and Euclidean space representations and match the consistency for semi-supervised medical image segmentation. We argue that for complex medical volumetric data, hyperbolic spaces are better suited to model data inductive biases. We propose an approach incorporating the two geometries to co-train an encoder-decoder model with a Hyperbolic probabilistic latent space and a separate encoder-decoder model with a Euclidean probabilistic latent space with complementary representations, thereby bridging the gap of co-training across manifolds (Co-Manifold learning) in a principled manner. To capture complementary information and hierarchical relationships, we propose a latent space embedding loss based on cosine similarity, which acts as a disagreement loss across manifolds. Further, we incorporate adversarial learning to enhance segmentation performance, and by doing so, we propose dual uncertainty-aware loss to enhance the learning of confident regions from one another. Our proposed method achieves competitive results on multiple benchmarks for semi-supervised medical image segmentation on medical scans.
+In this study, we investigate jointly learning Hyperbolic and Euclidean space representations and match the consistency for semi-supervised medical image segmentation. We argue that for complex medical volumetric data, hyperbolic spaces are beneficial to model data inductive biases. We propose an approach incorporating the two geometries to co-train a variational encoder-decoder model with a Hyperbolic probabilistic latent space and a separate variational encoder-decoder model with a Euclidean probabilistic latent space with complementary representations, thereby bridging the gap of co-training across manifolds (Co-Manifold learning) in a principled manner. To capture complementary information and hierarchical relationships, we propose a latent space embedding loss aimed at maximizing disagreement between embeddings across manifolds. Additionally, we employ adversarial learning to enhance segmentation performance by guiding the network in hyperbolic latent space using confident regions identified by the network in Euclidean space. Conversely, the network in Euclidean space is informed by hyperbolic uncertainty, creating a dual uncertainty-aware framework that enables the two spaces to collaboratively learn confident regions from each other. Our proposed method achieves competitive results on two benchmarks for semi-supervised medical image segmentation on medical scans.
 
 ## Link to full paper:
 To be Added
@@ -54,32 +54,32 @@ Download trained model weights from this shared drive [link](https://drive.googl
 - To train the model for LA MRI dataset on 10% Lableled data
 ```bash
 cd code_la
-CUDA_VISIBLE_DEVICES=0 nohup python train.py --dataset_name "LA" --labelnum 8 --dl_w 0.8 --ce_w 0.8 --alpha 0.005 --beta 0.02 --t_m 0.2 --hidden-dim 256 --batch_size 6 --labeled_bs 3 &> la_10.out &
+CUDA_VISIBLE_DEVICES=0 nohup python train.py --dataset_name "LA" --labelnum 8 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.2 --t_m 0.1 --hidden-dim 256 --batch_size 4 --labeled_bs 2 &> la_10.out &
 ```
 
 - To train the model for LA MRI dataset on 20% Lableled data
 ```bash
 cd code_la
-CUDA_VISIBLE_DEVICES=0 nohup python train.py --dataset_name "LA" --labelnum 16 --dl_w 0.8 --ce_w 0.8 --alpha 0.005 --beta 0.02 --t_m 0.2 --hidden-dim 256 --batch_size 6 --labeled_bs 3 &> la_20.out &
+CUDA_VISIBLE_DEVICES=0 nohup python train.py --dataset_name "LA" --max_iteration 30000 --labelnum 16 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.1 --t_m 0.1 --hidden-dim 256 --batch_size 4 --labeled_bs 2 &> la_20.out &
 ```
 
 - To train the model for MSD BraTS MRI dataset on 10% Lableled data
 ```bash
 cd code_brats
-nohup python train.py --dataset_name MSD_BRATS --labelnum 39 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.02 --t_m 0.2 --hidden-dim 256 --batch_size 6 --labeled_bs 3 &> msd_10_perc.out &
+nohup python train.py --dataset_name MSD_BRATS --labelnum 39 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.02 --t_m 0.2 --batch_size 6 --labeled_bs 3 &> msd_10_perc.out &
 ```
 
 - To train the model for MSD BraTS MRI dataset on 20% Lableled data
 ```bash
 cd code_brats
-nohup python train.py --dataset_name MSD_BRATS --labelnum 77 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.02 --t_m 0.2 --hidden-dim 256 --batch_size 6 --labeled_bs 3 &> msd_20_perc.out &
+nohup python train.py --dataset_name MSD_BRATS --labelnum 77 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.02 --t_m 0.2 --batch_size 6 --labeled_bs 3 &> msd_20_perc.out &
 ```
 ## Test Model
 
 - To test the Co-Manifold ensemble model for LA MRI dataset on 10% Lableled data
 ```bash
 cd code
-CUDA_VISIBLE_DEVICES=0 nohup python inference.py --dataset_name "LA" --labelnum 8 --dl_w 0.8 --ce_w 0.8 --alpha 0.005 --beta 0.02 --t_m 0.2 --hidden-dim 256 --exp Co_Manifold --batch_size 6 --labeled_bs 3 &> la_10_eval.out &
+CUDA_VISIBLE_DEVICES=0 nohup python inference.py --dataset_name "LA" --labelnum 8 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.2 --t_m 0.1 --hidden-dim 256 --batch_size 4 --labeled_bs 2 &> la_10_eval.out &
 ```
 
 ## Acknowledgements
