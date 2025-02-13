@@ -19,14 +19,14 @@ from tqdm import tqdm
 
 from utils.visualize import save_plots_all
 from utils import ramps, losses, test_patch
-from utils.embedding_loss_new import discrepancy_loss_torch
+from utils.embedding_loss_new import discrepancy_loss_torch_center
 from utils.losses import loss_hyp_uncertainty, gen_loss, disc_loss, loss_mask
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_name', type=str, default='LA', help='dataset_name')
 parser.add_argument('--root_path', type=str, default='./', help='Name of Dataset')
-parser.add_argument('--model_path', type=str, default='/data/users/himashi/TMI/', help='Name of Dataset')
-parser.add_argument('--exp', type=str, default='Co_Manifold')
+parser.add_argument('--model_path', type=str, default='./', help='Name of Dataset')
+parser.add_argument('--exp', type=str, default='Co_Manifold_CL')
 parser.add_argument('--model', type=str, default='vnet', help='model_name')
 parser.add_argument('--max_iteration', type=int, default=15000, help='maximum iteration to train')
 parser.add_argument('--max_samples', type=int, default=80, help='maximum samples to train')
@@ -63,9 +63,12 @@ parser.add_argument('--c', type=float, default=1., help='curvature')
 parser.add_argument('--manifold', type=str, default='PoincareBall', choices=['Euclidean', 'PoincareBall'])
 parser.add_argument('--manifold_euc', type=str, default='Euclidean', choices=['Euclidean', 'PoincareBall'])
 
+parser.add_argument('--consistency', type=float, default=1.0, help='consistency_weight')
+parser.add_argument('--consistency_rampup', type=float, default=40.0, help='consistency_rampup')
+
 args = parser.parse_args()
 
-snapshot_path = args.model_path + "/model_weights/{}_{}_{}_labeled_{}_ce_{}_dl_{}_tm_{}_bs_{}_alpha_{}_beta/{}".format(args.dataset_name, args.exp, args.labelnum, args.ce_w, args.dl_w, args.t_m, args.labeled_bs, args.alpha, args.beta, args.model)
+snapshot_path = args.model_path + "/model/{}_{}_{}_labeled_{}_ce_{}_dl_{}_tm_{}_bs_{}_alpha_{}_beta/{}".format(args.dataset_name, args.exp, args.labelnum, args.ce_w, args.dl_w, args.t_m, args.labeled_bs, args.alpha, args.beta, args.model)
 
 num_classes = 2
 
@@ -85,6 +88,11 @@ if args.deterministic:
     torch.cuda.manual_seed(args.seed)
     random.seed(args.seed)
     np.random.seed(args.seed)
+
+
+def get_current_consistency_weight(args, epoch):
+    # Consistency ramp-up from https://arxiv.org/abs/1610.02242
+    return args.consistency * ramps.sigmoid_rampup(epoch, args.consistency_rampup)
 
 
 if __name__ == "__main__":
@@ -216,12 +224,12 @@ if __name__ == "__main__":
             zs_E_u = zs_E[:, labeled_bs:]
             zs_H_E_u = zs_H_E[:, labeled_bs:]
 
-            l_angle_1 = discrepancy_loss_torch(zs_H_l, zs_E_l)
-            u_angle_1 = discrepancy_loss_torch(zs_H_u, zs_E_u)
+            l_angle_1 = discrepancy_loss_torch_center(zs_H_l, zs_E_l)
+            u_angle_1 = discrepancy_loss_torch_center(zs_H_u, zs_E_u)
             loss_space_1 = l_angle_1.mean() + u_angle_1.mean()
 
-            l_angle_2 = discrepancy_loss_torch(zs_E_H_l, zs_H_E_l)
-            u_angle_2 = discrepancy_loss_torch(zs_E_H_u, zs_H_E_u)
+            l_angle_2 = discrepancy_loss_torch_center(zs_E_H_l, zs_H_E_l)
+            u_angle_2 = discrepancy_loss_torch_center(zs_E_H_u, zs_H_E_u)
             loss_space_2 = l_angle_2.mean() + u_angle_2.mean()
 
             loss_space = 0.5 * (loss_space_1 + loss_space_2)
@@ -244,8 +252,10 @@ if __name__ == "__main__":
             loss_adversarial_gen_1 = gen_loss(g_critic_segs_1_1, target_real_g_1)
             loss_adversarial_1 = disc_loss(g_critic_segs_1_1, g_critic_segs_1_2, target_fake_1, target_real_1)
 
+            consistency_weight = get_current_consistency_weight(args, iter_num // 150)
+
             loss_unsup_1 = loss_mask_1 - alpha * loss_space + beta * loss_adversarial_gen_1
-            loss_1 = loss_sup_1 + loss_unsup_1
+            loss_1 = loss_sup_1 + consistency_weight * loss_unsup_1
 
             optimizer_1.zero_grad()
             loss_1.backward(retain_graph=True)
@@ -263,7 +273,7 @@ if __name__ == "__main__":
             loss_adversarial_2 = disc_loss(g_critic_segs_2_1, g_critic_segs_2_2, target_fake_1, target_real_1)
 
             loss_unsup_2 = loss_mask_2 - alpha * loss_space + beta * loss_adversarial_gen_2
-            loss_2 = loss_sup_2 + loss_unsup_2
+            loss_2 = loss_sup_2 + consistency_weight * loss_unsup_2
 
             optimizer_2.zero_grad()
             loss_2.backward()
@@ -297,7 +307,7 @@ if __name__ == "__main__":
 
             dis_optimizer.zero_grad()
 
-            critic_loss_1 = 0.5 * (loss_adversarial_1 + loss_adversarial_2)
+            critic_loss_1 = 1.0 * (loss_adversarial_1 + loss_adversarial_2)
 
             writer.add_scalar('loss/loss_critic1', critic_loss_1, iter_num)
             critic_loss_1.backward()
@@ -310,9 +320,8 @@ if __name__ == "__main__":
             if c_scheduler is not None:
                 c_scheduler.step()
 
-            if iter_num >= 1000 and iter_num % 150 == 0:
+            if iter_num >= 700 and iter_num % 150 == 0:
                 model_1.eval()
-                save_plots_all(label_batch, outputs1, zs_H, hyp, outputs2, zs_E, snapshot_path, iter_num)
                 dice_sample_1 = test_patch.var_all_case(model_1, num_classes=num_classes,
                                                                  patch_size=patch_size,
                                                                  stride_xy=16, stride_z=16,

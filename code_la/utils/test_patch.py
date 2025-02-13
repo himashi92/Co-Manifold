@@ -18,9 +18,9 @@ def getLargestCC(segmentation):
 
 def var_all_case(model, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4, dataset_name="LA"):
     if dataset_name == "LA":
-        with open('../data/LA/test.list', 'r') as f:
+        with open('../../data/LA/test.list', 'r') as f:
             image_list = f.readlines()
-        image_list = ["../data/LA/2018LA_Seg_Training Set/" + item.replace('\n', '') + "/mri_norm2.h5" for item in
+        image_list = ["../../data/LA/2018LA_Seg_Training Set/" + item.replace('\n', '') + "/mri_norm2.h5" for item in
                       image_list]
     elif dataset_name == "Pancreas_CT":
         with open('../data/Pancreas/test.list', 'r') as f:

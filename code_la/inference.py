@@ -1,16 +1,9 @@
-from utils.patch_ensemble import test_all_case
+from utils.patch_ensemble import test_all_case_w
 import torch.backends.cudnn as cudnn
 
 import argparse
-import logging
 import os
-import sys
-import gc
-import geoopt
-import torch
 import torch.backends.cudnn as cudnn
-import torch.optim as optim
-from torch.autograd import Variable
 
 from dataloaders.dataset import *
 from networks_mu_elbo.net_factory import net_factory, net_factory_hyperbolic
@@ -19,7 +12,7 @@ from networks_mu_elbo.net_factory import net_factory, net_factory_hyperbolic
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_name', type=str, default='LA', help='dataset_name')
 parser.add_argument('--root_path', type=str, default='./', help='Name of Dataset')
-parser.add_argument('--model_path', type=str, default='/data/users/himashi/TMI/', help='Name of Dataset')
+parser.add_argument('--model_path', type=str, default='./', help='Name of Dataset')
 parser.add_argument('--exp', type=str, default='Co_Manifold', help='exp_name')
 parser.add_argument('--model', type=str, default='vnet', help='model_name')
 parser.add_argument('--detail', type=int, default=1, help='print metrics for every samples?')
@@ -55,6 +48,8 @@ parser.add_argument('--c', type=float, default=1., help='curvature')
 parser.add_argument('--manifold', type=str, default='PoincareBall', choices=['Euclidean', 'PoincareBall'])
 parser.add_argument('--manifold_euc', type=str, default='Euclidean', choices=['Euclidean', 'PoincareBall'])
 
+parser.add_argument('--w1', type=float, default=0.8, help='weight for M1')
+parser.add_argument('--w2', type=float, default=0.2, help='weight for M2')
 
 FLAGS = parser.parse_args()
 
@@ -68,9 +63,9 @@ if FLAGS.deterministic:
     random.seed(FLAGS.seed)
     np.random.seed(FLAGS.seed)
 
-snapshot_path = FLAGS.model_path + "/model_weights/{}_{}_{}_labeled_{}_ce_{}_dl_{}_tm_{}_bs_{}_alpha_{}_beta/{}".format(FLAGS.dataset_name, FLAGS.exp, FLAGS.labelnum, FLAGS.ce_w, FLAGS.dl_w, FLAGS.t_m, FLAGS.labeled_bs, FLAGS.alpha, FLAGS.beta, FLAGS.model)
+snapshot_path = FLAGS.model_path + "/model/{}_{}_{}_labeled_{}_ce_{}_dl_{}_tm_{}_bs_{}_alpha_{}_beta/{}".format(FLAGS.dataset_name, FLAGS.exp, FLAGS.labelnum, FLAGS.ce_w, FLAGS.dl_w, FLAGS.t_m, FLAGS.labeled_bs, FLAGS.alpha, FLAGS.beta, FLAGS.model)
 
-test_save_path = FLAGS.model_path + "/model_weights/{}_{}_{}_labeled_{}_ce_{}_dl_{}_tm_{}_bs_{}_alpha_{}_beta/{}/{}_predictions_ensemble/".format(FLAGS.dataset_name, FLAGS.exp, FLAGS.labelnum, FLAGS.ce_w, FLAGS.dl_w, FLAGS.t_m, FLAGS.labeled_bs, FLAGS.alpha, FLAGS.beta, FLAGS.model,  FLAGS.model)
+test_save_path = FLAGS.model_path + "/model/{}_{}_{}_labeled_{}_ce_{}_dl_{}_tm_{}_bs_{}_alpha_{}_beta/{}/{}_predictions_ensemble_w1_{}_w2_{}/".format(FLAGS.dataset_name, FLAGS.exp, FLAGS.labelnum, FLAGS.ce_w, FLAGS.dl_w, FLAGS.t_m, FLAGS.labeled_bs, FLAGS.alpha, FLAGS.beta, FLAGS.model,  FLAGS.model, FLAGS.w1, FLAGS.w2)
 
 
 num_classes = 2
@@ -99,10 +94,10 @@ def calculate_metric():
     print("init weight from {}".format(save_mode_path_2))
     net_2.eval()
 
-    avg_metric = test_all_case(FLAGS.model, 1, net_1, net_2, image_list, num_classes=num_classes,
-                               patch_size=patch_size, stride_xy=4, stride_z=4,
+    avg_metric = test_all_case_w(FLAGS.model, 1, net_1, net_2, image_list, num_classes=num_classes,
+                               patch_size=patch_size, stride_xy=4, stride_z=2,
                                save_result=True, test_save_path=test_save_path,
-                               metric_detail=FLAGS.detail, nms=FLAGS.nms)
+                               metric_detail=FLAGS.detail, nms=FLAGS.nms, w1=FLAGS.w1, w2=FLAGS.w2)
 
     return avg_metric
 

@@ -103,7 +103,176 @@ def test_all_case(model_name, num_outputs, model, model2, image_list, num_classe
 
     return avg_metric
 
+def test_all_case_w(model_name, num_outputs, model, model2, image_list, num_classes, patch_size=(112, 112, 80), stride_xy=18,
+                  stride_z=4, save_result=True, test_save_path=None, preproc_fn=None, metric_detail=1, nms=0, w1=0.8, w2=0.2):
+    loader = tqdm(image_list) if not metric_detail else image_list
+    ith = 0
+    total_metric = 0.0
+    total_metric_average = 0.0
+    for image_path in loader:
+        h5f = h5py.File(image_path, 'r')
+        image = h5f['image'][:]
+        label = h5f['label'][:]
+        if preproc_fn is not None:
+            image = preproc_fn(image)
+        prediction_1, score_map_1 = test_single_case_first_output(model, image, stride_xy, stride_z, patch_size,
+                                                              num_classes=num_classes)
+        prediction_2, score_map_2 = test_single_case_first_output(model2, image, stride_xy, stride_z, patch_size,
+                                                                  num_classes=num_classes)
 
+        pred = w1 * prediction_1 + w2 * prediction_2
+        # pred = p / 2
+        prediction = (pred > 0.5).astype(int)
+        # prediction_1 = getLargestCC(prediction_1)
+        # prediction_2 = getLargestCC(prediction_2)
+        # prediction = np.logical_or(prediction_1, prediction_2)
+        prediction = getLargestCC(prediction)
+
+        score_map = np.logical_and(score_map_1, score_map_2)
+
+        if np.sum(prediction) == 0:
+            single_metric = (0, 0, 0, 0)
+        else:
+            single_metric = calculate_metric_percase(prediction, label[:])
+
+        if metric_detail:
+            print('%02d,\t%.5f, %.5f, %.5f, %.5f' % (
+            ith, single_metric[0], single_metric[1], single_metric[2], single_metric[3]))
+
+        total_metric += np.asarray(single_metric)
+
+        if save_result:
+            nib.save(nib.Nifti1Image(prediction.astype(np.float32), np.eye(4)),
+                     test_save_path + "%02d_pred.nii.gz" % ith)
+            nib.save(nib.Nifti1Image(score_map[0].astype(np.float32), np.eye(4)),
+                     test_save_path + "%02d_scores.nii.gz" % ith)
+
+            nib.save(nib.Nifti1Image(image[:].astype(np.float32), np.eye(4)), test_save_path + "%02d_img.nii.gz" % ith)
+            nib.save(nib.Nifti1Image(label[:].astype(np.float32), np.eye(4)), test_save_path + "%02d_gt.nii.gz" % ith)
+
+        ith += 1
+
+    avg_metric = total_metric / len(image_list)
+    print('average metric is decoder 1 {}'.format(avg_metric))
+
+    with open(test_save_path + '../{}_performance_ensemble.txt'.format(model_name), 'w') as f:
+        f.writelines('average metric of decoder 1 is {} \n'.format(avg_metric))
+
+    return avg_metric
+def test_all_case_or(model_name, num_outputs, model, model2, image_list, num_classes, patch_size=(112, 112, 80), stride_xy=18,
+                  stride_z=4, save_result=True, test_save_path=None, preproc_fn=None, metric_detail=1, nms=0):
+    loader = tqdm(image_list) if not metric_detail else image_list
+    ith = 0
+    total_metric = 0.0
+    total_metric_average = 0.0
+    for image_path in loader:
+        h5f = h5py.File(image_path, 'r')
+        image = h5f['image'][:]
+        label = h5f['label'][:]
+        if preproc_fn is not None:
+            image = preproc_fn(image)
+        prediction_1, score_map_1 = test_single_case_first_output_model(model, image, stride_xy, stride_z, patch_size,
+                                                              num_classes=num_classes)
+        prediction_2, score_map_2 = test_single_case_first_output_model(model2, image, stride_xy, stride_z, patch_size,
+                                                                  num_classes=num_classes)
+
+        # p = prediction_1 + prediction_2
+        # pred = p / 2
+        # prediction = (pred > 0.5).astype(int)
+        prediction_1 = getLargestCC(prediction_1)
+        prediction_2 = getLargestCC(prediction_2)
+        prediction = np.logical_or(prediction_1, prediction_2)
+        # prediction = getLargestCC(prediction)
+
+        score_map = np.logical_and(score_map_1, score_map_2)
+
+        if np.sum(prediction) == 0:
+            single_metric = (0, 0, 0, 0)
+        else:
+            single_metric = calculate_metric_percase(prediction, label[:])
+
+        if metric_detail:
+            print('%02d,\t%.5f, %.5f, %.5f, %.5f' % (
+            ith, single_metric[0], single_metric[1], single_metric[2], single_metric[3]))
+
+        total_metric += np.asarray(single_metric)
+
+        if save_result:
+            nib.save(nib.Nifti1Image(prediction.astype(np.float32), np.eye(4)),
+                     test_save_path + "%02d_pred.nii.gz" % ith)
+            nib.save(nib.Nifti1Image(score_map[0].astype(np.float32), np.eye(4)),
+                     test_save_path + "%02d_scores.nii.gz" % ith)
+
+            nib.save(nib.Nifti1Image(image[:].astype(np.float32), np.eye(4)), test_save_path + "%02d_img.nii.gz" % ith)
+            nib.save(nib.Nifti1Image(label[:].astype(np.float32), np.eye(4)), test_save_path + "%02d_gt.nii.gz" % ith)
+
+        ith += 1
+
+    avg_metric = total_metric / len(image_list)
+    print('average metric is decoder 1 {}'.format(avg_metric))
+
+    with open(test_save_path + '../{}_performance_ensemble.txt'.format(model_name), 'w') as f:
+        f.writelines('average metric of decoder 1 is {} \n'.format(avg_metric))
+
+    return avg_metric
+
+
+def test_all_case_and(model_name, num_outputs, model, model2, image_list, num_classes, patch_size=(112, 112, 80), stride_xy=18,
+                  stride_z=4, save_result=True, test_save_path=None, preproc_fn=None, metric_detail=1, nms=0):
+    loader = tqdm(image_list) if not metric_detail else image_list
+    ith = 0
+    total_metric = 0.0
+    total_metric_average = 0.0
+    for image_path in loader:
+        h5f = h5py.File(image_path, 'r')
+        image = h5f['image'][:]
+        label = h5f['label'][:]
+        if preproc_fn is not None:
+            image = preproc_fn(image)
+        prediction_1, score_map_1 = test_single_case_first_output_model(model, image, stride_xy, stride_z, patch_size,
+                                                              num_classes=num_classes)
+        prediction_2, score_map_2 = test_single_case_first_output_model(model2, image, stride_xy, stride_z, patch_size,
+                                                                  num_classes=num_classes)
+
+        # p = prediction_1 + prediction_2
+        # pred = p / 2
+        # prediction = (pred > 0.5).astype(int)
+        prediction_1 = getLargestCC(prediction_1)
+        prediction_2 = getLargestCC(prediction_2)
+        prediction = np.logical_and(prediction_1, prediction_2)
+        prediction = getLargestCC(prediction)
+
+        score_map = np.logical_and(score_map_1, score_map_2)
+
+        if np.sum(prediction) == 0:
+            single_metric = (0, 0, 0, 0)
+        else:
+            single_metric = calculate_metric_percase(prediction, label[:])
+
+        if metric_detail:
+            print('%02d,\t%.5f, %.5f, %.5f, %.5f' % (
+            ith, single_metric[0], single_metric[1], single_metric[2], single_metric[3]))
+
+        total_metric += np.asarray(single_metric)
+
+        if save_result:
+            nib.save(nib.Nifti1Image(prediction.astype(np.float32), np.eye(4)),
+                     test_save_path + "%02d_pred.nii.gz" % ith)
+            nib.save(nib.Nifti1Image(score_map[0].astype(np.float32), np.eye(4)),
+                     test_save_path + "%02d_scores.nii.gz" % ith)
+
+            nib.save(nib.Nifti1Image(image[:].astype(np.float32), np.eye(4)), test_save_path + "%02d_img.nii.gz" % ith)
+            nib.save(nib.Nifti1Image(label[:].astype(np.float32), np.eye(4)), test_save_path + "%02d_gt.nii.gz" % ith)
+
+        ith += 1
+
+    avg_metric = total_metric / len(image_list)
+    print('average metric is decoder 1 {}'.format(avg_metric))
+
+    with open(test_save_path + '../{}_performance_ensemble.txt'.format(model_name), 'w') as f:
+        f.writelines('average metric of decoder 1 is {} \n'.format(avg_metric))
+
+    return avg_metric
 def test_all_case_euclidean(model_name, num_outputs, model, image_list, num_classes, patch_size=(112, 112, 80), stride_xy=18,
                   stride_z=4, save_result=True, test_save_path=None, preproc_fn=None, metric_detail=1, nms=0):
     loader = tqdm(image_list) if not metric_detail else image_list

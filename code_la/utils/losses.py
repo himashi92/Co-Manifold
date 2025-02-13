@@ -102,6 +102,8 @@ def loss_diff2(u_prediction_1, u_prediction_2):
 
 
 def loss_mask(u_prediction_1, u_prediction_2, critic_segs, T_m):
+    # u_prediction_1 from E
+    # u_prediction_2 from H
     gen_mask = (critic_segs.squeeze(0) > T_m).float()
     loss_a = gen_mask * CE(u_prediction_1,
                            Variable(u_prediction_2.float(), requires_grad=False))
@@ -109,21 +111,6 @@ def loss_mask(u_prediction_1, u_prediction_2, critic_segs, T_m):
     loss_diff_avg = loss_a.mean()
 
     return loss_diff_avg
-
-
-def loss_uncertainty2(hyperbolic_pred, u_prediction_1, u_prediction_2, c= 0.5, T_m=0.1):
-    curvature = c
-    cm = torch.linalg.norm(hyperbolic_pred, dim=1, ord=2)
-    confidence_map = cm.unsqueeze(1)
-    radius = 1.0 / math.sqrt(curvature)
-    normalized_cm = confidence_map / radius
-    gen_mask = (normalized_cm> T_m).float()
-    loss_a = gen_mask * CE(u_prediction_1,
-                           Variable(u_prediction_2.float(), requires_grad=False))
-
-    loss_mask = loss_a.mean()
-
-    return loss_mask
 
 
 # _logcosh
@@ -140,23 +127,6 @@ def hyperbolic_angle(u, v):
     return angle
 
 
-def loss_uncertainty(hyperbolic_pred, u_prediction_1, u_prediction_2, T_m=0.1):
-    curvature = 0.3
-    loss_a = 0.0
-    for i in range(u_prediction_2.size(1)):
-        cm = torch.linalg.norm(hyperbolic_pred[:, i, ...], dim=1, ord=2)
-        confidence_map = cm.unsqueeze(1)
-        radius = 1.0 / math.sqrt(curvature)
-        normalized_cm = confidence_map / radius
-        gen_mask = (normalized_cm > T_m).float()
-        loss_a = loss_a + gen_mask * CE(u_prediction_1[:, i, ...],
-                                            Variable(u_prediction_2[:, i, ...].float(), requires_grad=False))
-
-    loss_mask = loss_a.mean() / u_prediction_2.size(1)
-
-    return loss_mask
-
-
 def loss_hyp_uncertainty(hyperbolic_pred, u_prediction_1, u_prediction_2, T_m=0.1):
     curvature = 0.3
     loss_a = 0.0
@@ -169,6 +139,46 @@ def loss_hyp_uncertainty(hyperbolic_pred, u_prediction_1, u_prediction_2, T_m=0.
                                             Variable(u_prediction_2[:, i, ...].float(), requires_grad=False))
 
     loss_mask = loss_a.mean() / u_prediction_2.size(1)
+
+    return loss_mask
+
+
+def loss_hyp_uncertainty_rev(hyperbolic_pred, u_prediction_1, u_prediction_2, T_m=0.1, curvature=0.3, k=10.0):
+    """
+    Computes a loss based on hyperbolic predictions and uncertainty maps.
+
+    Parameters:
+    - hyperbolic_pred: Tensor of hyperbolic predictions (B, C, H, W, ...)
+    - u_prediction_1: Tensor of logits (predicted by model1) (B, C, H, W, ...)
+    - u_prediction_2: Tensor of ground truth or reference predictions (B, C, H, W, ...)
+    - T_m: Threshold for confidence mask generation
+    - curvature: Curvature of hyperbolic space
+    - k: Sharpness parameter for sigmoid-based mask
+
+    Returns:
+    - loss_mask: Computed loss
+    """
+
+    # u_prediction_1 from H
+    # u_prediction_2 from E
+    # Define the radius of hyperbolic space
+    radius = 1.0 / math.sqrt(curvature)
+    loss_a = 0.0
+
+    for i in range(u_prediction_2.size(1)):  # Iterate over each class
+        # Compute confidence map based on hyperbolic norms
+        confidence_map = torch.linalg.norm(hyperbolic_pred[:, i, ...], dim=0, ord=2)
+        normalized_cm = confidence_map / radius
+
+        # Generate differentiable confidence mask
+        gen_mask = torch.sigmoid(k * (normalized_cm - T_m))
+
+        # Compute cross-entropy loss for this class
+        loss_a += gen_mask * CE(u_prediction_1[:, i, ...],
+                                            Variable(u_prediction_2[:, i, ...].float(), requires_grad=False))
+
+    # Normalize loss across classes and apply a mean
+    loss_mask = loss_a.sum() / (gen_mask.sum() + 1e-8)  # Avoid division by zero
 
     return loss_mask
 
