@@ -44,11 +44,16 @@ pip install -r requirements.txt
 The experiments are conducted on two publicly available datasets,
 - 2018 Left Atrial Segmentation Challenge Dataset : http://atriaseg2018.cardiacatlas.org
 - MSD BraTS Dataset : http://medicaldecathlon.com/
+- NIH Pancreas CT Dataset : https://wiki.cancerimagingarchive.net/display/Public/Pancreas-CT
 
-Pre-processed data can be found in folder data.
+Pre-processed data can be found in this repo: https://github.com/himashi92/Co-BioNet/tree/main/data
 
 ## Trained Model Weights
 Download trained model weights from this shared drive [link](https://drive.google.com/drive/folders/1BMNvhAlMggKVbf44xSzNv8JZ2GKNPwK3?usp=sharing), and put it under folder **code_la/model_weights** or **code_brats/model_weights**
+
+## Hyper-parameter Setup
+![Hyper-Params](img/hyper-params.jpg?raw=true)
+
 
 ## Train Model
 - To train the model for LA MRI dataset on 10% Lableled data
@@ -66,13 +71,19 @@ CUDA_VISIBLE_DEVICES=0 nohup python train.py --dataset_name "LA" --max_iteration
 - To train the model for MSD BraTS MRI dataset on 10% Lableled data
 ```bash
 cd code_brats
-nohup python train.py --dataset_name MSD_BRATS --labelnum 39 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.02 --t_m 0.2 --batch_size 6 --labeled_bs 3 &> msd_10_perc.out &
+nohup python train.py --dataset_name MSD_BRATS --max_iteration 30000 --labelnum 39 --dl_w 1.0 --ce_w 0.5 --alpha 0.005 --beta 0.05 --t_m 0.4 --batch_size 2 --labeled_bs 1 &> msd_10_perc.out &
 ```
 
 - To train the model for MSD BraTS MRI dataset on 20% Lableled data
 ```bash
 cd code_brats
-nohup python train.py --dataset_name MSD_BRATS --labelnum 77 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 0.02 --t_m 0.2 --batch_size 6 --labeled_bs 3 &> msd_20_perc.out &
+nohup python train.py --dataset_name MSD_BRATS --max_iteration 30000 --labelnum 77 --dl_w 1.0 --ce_w 0.5 --alpha 0.005 --beta 0.05 --t_m 0.4 --batch_size 2 --labeled_bs 1 &> msd_20_perc.out &
+```
+
+- To train the model for NIH Pancreas CT dataset on 20% Lableled data
+```bash
+cd code_pancreas
+CUDA_VISIBLE_DEVICES=0 nohup python train.py --dataset_name "PA" --max_iteration 15000 --labelnum 12 --dl_w 1.0 --ce_w 1.0 --alpha 0.005 --beta 1.0 --t_m 0.2 --hidden-dim 256 --batch_size 4 --labeled_bs 2 &> pa_20.out &
 ```
 ## Test Model
 
