@@ -1,0 +1,14 @@
+tensorboardx
+pyyaml
+yacs
+einops
+SimpleITK
+pandas
+numpy
+scikit-image
+sklearn
+matplotlib
+torchio
+medpy
+h5py
+geoopt
