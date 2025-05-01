@@ -6,7 +6,7 @@ This repo contains the supported pytorch code and configuration files to reprodu
 In this study, we investigate jointly learning Hyperbolic and Euclidean space representations and match the consistency for semi-supervised medical image segmentation. We argue that for complex medical volumetric data, hyperbolic spaces are beneficial to model data inductive biases. We propose an approach incorporating the two geometries to co-train a variational encoder-decoder model with a Hyperbolic probabilistic latent space and a separate variational encoder-decoder model with a Euclidean probabilistic latent space with complementary representations, thereby bridging the gap of co-training across manifolds (Co-Manifold learning) in a principled manner. To capture complementary information and hierarchical relationships, we propose a latent space embedding loss aimed at maximizing disagreement between embeddings across manifolds. Additionally, we employ adversarial learning to enhance segmentation performance by guiding the network in hyperbolic latent space using confident regions identified by the network in Euclidean space. Conversely, the network in Euclidean space is informed by hyperbolic uncertainty, creating a dual uncertainty-aware framework that enables the two spaces to collaboratively learn confident regions from each other. Our proposed method achieves competitive results on two benchmarks for semi-supervised medical image segmentation on medical scans.
 
 ## Link to full paper:
-To be Added
+[Link](https://www.sciencedirect.com/science/article/pii/S092523122500880X)
 
 ## Proposed Architecture
 ![Proposed Architecture](img/Co-Manifold.png?raw=true)
